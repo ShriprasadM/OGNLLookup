@@ -1,0 +1,64 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/prebid/openrtb"
+)
+
+func main() {
+	// fmt.Println(generateBidResponse())
+
+	bidResponse := openrtb.BidResponse{
+		BidID: "233e",
+		SeatBid: []openrtb.SeatBid{
+			{Bid: []openrtb.Bid{{AdM: "native"}}},
+			{Bid: []openrtb.Bid{{AdM: "video"}, {AdM: "banner"}}},
+		},
+	}
+
+	adm := lookup("bidresponse.seatbid.bid.adm", bidResponse, "")
+	fmt.Println(adm)
+}
+
+func lookup[R any](key string, bidResponse openrtb.BidResponse, returnType R) R {
+	m := map[string]func(bidResponse openrtb.BidResponse, i int) interface{}{
+		"bidresponse.id": func(bidResponse openrtb.BidResponse, i int) interface{} {
+			return bidResponse.ID
+		},
+	}
+
+	fn := m[key]
+	result := fn(bidResponse, 0)
+	return result.(R)
+}
+
+// func main() {
+
+// 	// fmt.Println(generateBidResponse())
+
+// 	bidResponse := openrtb.BidResponse{
+// 		BidID: "233e",
+// 		SeatBid: []openrtb.SeatBid{
+// 			{Bid: []openrtb.Bid{{AdM: "native"}}},
+// 			{Bid: []openrtb.Bid{{AdM: "video"}, {AdM: "banner"}}},
+// 		},
+// 	}
+
+// 	adm := lookup(fn(bidResponse, "bidresponse.seatbid.bid.adm"))
+// 	fmt.Println(adm)
+// 	bid := lookup(fn1(bidResponse, "bidresponse.3.bid"))
+// 	fmt.Println(bid)
+// }
+
+// func lookup[R any](fn R) R {
+// 	return fn
+// }
+
+// func fn(bidResponse openrtb.BidResponse, key string) string {
+// 	return bidResponse.BidID
+// }
+
+// func fn1(bidResponse openrtb.BidResponse, key string) openrtb.Bid {
+// 	return bidResponse.SeatBid[0].Bid[0]
+// }
