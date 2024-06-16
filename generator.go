@@ -7,9 +7,11 @@ import (
 )
 
 var (
-	SEPERATOR                                = "."
-	keyNillableMap        map[string]keyMeta = make(map[string]keyMeta)
-	RETURN_VAL_TYPE_MACRO                    = "##VAL##"
+	SEPERATOR                                       = "."
+	keyNillableMap               map[string]keyMeta = make(map[string]keyMeta)
+	RETURN_VAL_TYPE_MACRO                           = "##VAL##"
+	INDEX_INFO_STRUCT_NAME                          = "IndexInfo"
+	indexInfoFieldsWithDataTypes                    = make([]string, 0)
 )
 
 func initF(obj any, variableName string) string {
@@ -25,11 +27,12 @@ func initF(obj any, variableName string) string {
 	}
 	mapString += "}"
 	// set return value type
-	returnValueType := fmt.Sprintf("func(%s %s, i int) interface{}", variableName, variableDataType)
+	returnValueType := fmt.Sprintf("func(%s %s, indexInfo %s) interface{}", variableName, variableDataType, INDEX_INFO_STRUCT_NAME)
 	mapString = strings.ReplaceAll(mapString, RETURN_VAL_TYPE_MACRO, returnValueType)
 
 	// fmt.Println(mapString)
-	return mapString
+	indexInfoStruct := indexInfoStruct(indexInfoFieldsWithDataTypes...)
+	return indexInfoStruct + "\n" + mapString
 }
 
 func itr(field reflect.StructField, prefix string, mapString string, variableNameDataType string) string {
@@ -69,11 +72,24 @@ func mapKV(key, val string, variableNameDataType string) string {
 	objs := strings.Split(val, SEPERATOR)
 	ifCondition := ""
 	prevStmt := ""
+	// collectionCounterVariables := []string{}
 	// var lastObjDataType reflect.Kind
 	for _, obj := range objs {
 		// lastObjDataType = keyNillableMap[obj].dataType
 		if keyNillableMap[obj].isCollection {
-			obj = fmt.Sprintf("%s[i]", obj)
+			counterVariable := fmt.Sprintf("%sIndex", strings.ToLower(obj))
+			obj = fmt.Sprintf("%s[indexInfo.%s]", obj, counterVariable)
+			// collectionCounterVariables = append(collectionCounterVariables, counterVariable)
+			fieldPresent := false
+			for _, field := range indexInfoFieldsWithDataTypes {
+				if field == counterVariable {
+					fieldPresent = true
+					break
+				}
+			}
+			if !fieldPresent {
+				indexInfoFieldsWithDataTypes = append(indexInfoFieldsWithDataTypes, counterVariable)
+			}
 		}
 
 		if prevStmt == "" {
@@ -99,10 +115,24 @@ func mapKV(key, val string, variableNameDataType string) string {
 		ifCondition += "{\n return nil \n}\n return " + prevStmt
 	}
 
-	function := `func(%s %s, i int) %s {
+	// %s
+	// 1st - parent object ::  obj[0]
+	// 2nd - parent object datatype  :: variableNameDataType
+	// 3rd - counterVariables
+	// 4th - return type :: interface{}
+	// 5th - ifCondition :: either contains nil checks or simple return
+	function := `func(%s %s %s) %s {
 		%s
 	}`
-	return fmt.Sprintf("\"%s\": %s,\n", key, fmt.Sprintf(function, objs[0], variableNameDataType, "interface{}", ifCondition))
+	// counters := ""
+	// if len(collectionCounterVariables) > 0 {
+	// 	// counters = strings.Join(collectionCounterVariables, " int,")
+	// 	// counters += " int"
+	// 	// counters = "," + counters
+	// 	counters = fmt.Sprintf("indexInfo " + INDEX_INFO_STRUCT_NAME)
+	// }
+	valFun := fmt.Sprintf(function, objs[0], variableNameDataType, ",indexInfo "+INDEX_INFO_STRUCT_NAME, "interface{}", ifCondition)
+	return fmt.Sprintf("\"%s\": %s,\n", key, valFun)
 	// following returns actual datatype
 	// return fmt.Sprintf("\"%s\": %s,\n", key, fmt.Sprintf(function, objs[0], variableNameDataType, lastObjDataType, ifCondition))
 }
@@ -163,4 +193,16 @@ func isCollection(obj any) bool {
 		return true
 	}
 	return false
+}
+
+func indexInfoStruct(indices ...string) string {
+	indexInfo := `type ` + INDEX_INFO_STRUCT_NAME + ` struct {
+		%s
+	}
+	`
+	fields := ""
+	for _, field := range indices {
+		fields += fmt.Sprintf("	%s int\n", field)
+	}
+	return fmt.Sprintf(indexInfo, fields)
 }
