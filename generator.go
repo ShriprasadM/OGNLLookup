@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -14,7 +15,7 @@ var (
 	indexInfoFieldsWithDataTypes                    = make([]string, 0)
 )
 
-func initF(obj any, variableName string) string {
+func initF(obj any, variableName, outputFileName string) string {
 	fields := reflect.TypeOf(obj)
 	variableDataType := fmt.Sprintf("%T", obj)
 	setKeyMeta(obj, variableName)
@@ -32,7 +33,12 @@ func initF(obj any, variableName string) string {
 
 	// fmt.Println(mapString)
 	indexInfoStruct := indexInfoStruct(indexInfoFieldsWithDataTypes...)
-	return indexInfoStruct + "\n" + mapString
+	output := indexInfoStruct + "\n" + mapString
+	err := os.WriteFile(outputFileName, []byte(output), os.ModeDevice)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return output
 }
 
 func itr(field reflect.StructField, prefix string, mapString string, variableNameDataType string) string {
