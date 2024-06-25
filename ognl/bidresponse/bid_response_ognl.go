@@ -7,7 +7,7 @@ import (
 )
 
 type IndexInfo struct {
-	SeatBidIndex int
+	SeatbidIndex int
 	BidIndex     int
 }
 
@@ -18,63 +18,63 @@ var bidResponseLookup = map[string]func(bidResponse openrtb.BidResponse, indexIn
 	},
 	"bidresponse.seatbid.bid.id": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].ID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].ID
 	},
 	"bidresponse.seatbid.bid.impid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].ImpID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].ImpID
 	},
 	"bidresponse.seatbid.bid.price": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].Price
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].Price
 	},
 	"bidresponse.seatbid.bid.adid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].AdID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].AdID
 	},
 	"bidresponse.seatbid.bid.nurl": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].NURL
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].NURL
 	},
 	"bidresponse.seatbid.bid.adm": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].AdM
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].AdM
 	},
 	"bidresponse.seatbid.bid.bundle": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].Bundle
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].Bundle
 	},
 	"bidresponse.seatbid.bid.iurl": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].IURL
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].IURL
 	},
 	"bidresponse.seatbid.bid.cid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].CID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].CID
 	},
 	"bidresponse.seatbid.bid.crid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].CrID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].CrID
 	},
 	"bidresponse.seatbid.bid.dealid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].DealID
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].DealID
 	},
 	"bidresponse.seatbid.bid.h": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].H
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].H
 	},
 	"bidresponse.seatbid.bid.w": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Bid[indexInfo.BidIndex].W
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Bid[indexInfo.BidIndex].W
 	},
 	"bidresponse.seatbid.seat": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Seat
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Seat
 	},
 	"bidresponse.seatbid.group": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 
-		return bidResponse.SeatBid[indexInfo.SeatBidIndex].Group
+		return bidResponse.SeatBid[indexInfo.SeatbidIndex].Group
 	},
 	"bidresponse.bidid": func(bidResponse openrtb.BidResponse, indexInfo IndexInfo) interface{} {
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 )
@@ -21,20 +22,32 @@ func initF(obj any, variableName, outputFileName string) string {
 	setKeyMeta(obj, variableName)
 	// values := reflect.ValueOf(obj)
 	num := fields.NumField()
-	mapString := fmt.Sprintf("m := map[string]%s{\n", RETURN_VAL_TYPE_MACRO)
+	mapString := fmt.Sprintf("var %sLookup = map[string]%s{\n", variableName, RETURN_VAL_TYPE_MACRO)
 	for i := 0; i < num; i++ {
 		field := fields.Field(i)
 		mapString = itr(field, variableName, mapString, variableDataType)
 	}
 	mapString += "}"
 	// set return value type
-	returnValueType := fmt.Sprintf("func(%s %s, indexInfo %s) interface{}", variableName, variableDataType, INDEX_INFO_STRUCT_NAME)
+	returnValueType := fmt.Sprintf("func(%s %s, indexInfo %s) (interface{}, error)", variableName, variableDataType, INDEX_INFO_STRUCT_NAME)
 	mapString = strings.ReplaceAll(mapString, RETURN_VAL_TYPE_MACRO, returnValueType)
 
 	// fmt.Println(mapString)
 	indexInfoStruct := indexInfoStruct(indexInfoFieldsWithDataTypes...)
 	output := indexInfoStruct + "\n" + mapString
-	err := os.WriteFile(outputFileName, []byte(output), os.ModeDevice)
+	path := filepath.Dir(outputFileName)
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		fmt.Println(err.Error())
+		return ""
+	}
+	// use rightmost path as package name
+	paths := strings.Split(path, "/")
+	packageName := paths[len(paths)-1]
+	output = fmt.Sprintf("package %s\n%s", packageName, output)
+	// add lookup function
+	output += generateLookupFunc(variableName, variableDataType)
+	err = os.WriteFile(outputFileName, []byte(output), os.ModePerm)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -78,12 +91,14 @@ func mapKV(key, val string, variableNameDataType string) string {
 	objs := strings.Split(val, SEPERATOR)
 	ifCondition := ""
 	prevStmt := ""
+	conditionStmt := ""
 	// collectionCounterVariables := []string{}
 	// var lastObjDataType reflect.Kind
-	for _, obj := range objs {
+	for index, obj := range objs {
 		// lastObjDataType = keyNillableMap[obj].dataType
+		counterVariable := ""
 		if keyNillableMap[obj].isCollection {
-			counterVariable := fmt.Sprintf("%sIndex", strings.ToLower(obj))
+			counterVariable = fmt.Sprintf("%sIndex", strings.Title(strings.ToLower(obj)))
 			obj = fmt.Sprintf("%s[indexInfo.%s]", obj, counterVariable)
 			// collectionCounterVariables = append(collectionCounterVariables, counterVariable)
 			fieldPresent := false
@@ -101,10 +116,13 @@ func mapKV(key, val string, variableNameDataType string) string {
 		if prevStmt == "" {
 			prevStmt = obj
 		} else {
+			if counterVariable != "" {
+				conditionStmt = orCondition("", fmt.Sprintf("indexInfo.%s >= len(%s)", counterVariable, ognl(prevStmt, objs[index])))
+			}
 			prevStmt = ognl(prevStmt, obj)
 		}
 
-		if !keyNillableMap[obj].isNilable {
+		if !keyNillableMap[objs[index]].isNilable {
 			continue
 		}
 
@@ -113,12 +131,15 @@ func mapKV(key, val string, variableNameDataType string) string {
 		} else {
 			ifCondition += "|| "
 		}
-		ifCondition += fmt.Sprintf("%s == nil ", prevStmt)
+		// ifCondition += fmt.Sprintf("%s == nil ", conditionStmt)
+		ifCondition += conditionStmt
 	}
 	if ifCondition == "" {
-		ifCondition = "\n return " + prevStmt
+		ifCondition = "\n return " + prevStmt + ", nil"
 	} else {
-		ifCondition += "{\n return nil \n}\n return " + prevStmt
+
+		errorObject := fmt.Sprintf(`fmt.Errorf("invalid index present in indexInfo object '%s'", indexInfo)`, "%+v")
+		ifCondition += "{\n return nil, " + errorObject + " \n}\n return " + prevStmt + ", nil"
 	}
 
 	// %s
@@ -127,7 +148,7 @@ func mapKV(key, val string, variableNameDataType string) string {
 	// 3rd - counterVariables
 	// 4th - return type :: interface{}
 	// 5th - ifCondition :: either contains nil checks or simple return
-	function := `func(%s %s %s) %s {
+	function := `func(%s %s %s) (%s, error) {
 		%s
 	}`
 	// counters := ""
@@ -150,19 +171,19 @@ func ognl(prefix, variable string) string {
 }
 
 func isNillable(i any) bool {
-	value := reflect.ValueOf(i)
-	switch value.Kind() {
-	case reflect.Pointer:
-	case reflect.Map:
-	case reflect.Slice:
-	case reflect.Func:
-	case reflect.Chan:
-	case reflect.Interface:
+	tpe := reflect.TypeOf(i)
+	nillable := isKindNillable(tpe.Kind())
+
+	if sField, ok := i.(reflect.StructField); ok {
+		nillable = isKindNillable(sField.Type.Kind())
+	}
+	return nillable
+}
+
+func isKindNillable(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface:
 		return true
-
-	default:
-		return false
-
 	}
 	return false
 }
@@ -211,4 +232,47 @@ func indexInfoStruct(indices ...string) string {
 		fields += fmt.Sprintf("	%s int\n", field)
 	}
 	return fmt.Sprintf(indexInfo, fields)
+}
+
+/*
+Example
+
+	func LookUpBidResponse[R any](key string, bidResponse openrtb.BidResponse, indexInfo IndexInfo, returnType R) (R, error) {
+		fn := bidResponseLookup[key]
+		if fn == nil {
+			return returnType, fmt.Errorf("invalid OGNL key [%s]", key)
+		}
+		result := fn(bidResponse, indexInfo)
+		if rTypeValue, ok := result.(R); ok {
+			return rTypeValue, nil
+		}
+		return returnType, fmt.Errorf("data type mismatch.Expected [%T] but found [%T]", returnType, result)
+	}
+*/
+func generateLookupFunc(variableName, variableDataType string) string {
+	tmpl := `// LookUpBidResponse obtains value of type R using key from %s. It uses indexIndo if required
+	// In case of failure returns error
+	func LookUpBidResponse[R any](key string, %s %s, indexInfo IndexInfo, returnType R) (R, error) {
+	fn := bidResponseLookup[key]
+	if fn == nil {
+		return returnType, fmt.Errorf("invalid OGNL key [%s]", key)
+	}
+	result, err := fn(bidResponse, indexInfo)
+	if err != nil {
+		// Note: returntype here is not actual value
+		return returnType, err
+	}
+	if rTypeValue, ok := result.(R); ok {
+		return rTypeValue, nil
+	}
+	return returnType, fmt.Errorf("data type mismatch.Expected [%s] but found [%s]", returnType, result)
+}`
+	return fmt.Sprintf("\n"+tmpl, variableName, variableName, variableDataType, "%s", "%T", "%T")
+}
+
+func orCondition(prevStmt, newStmt string) string {
+	if prevStmt != "" {
+		return prevStmt + " || " + newStmt
+	}
+	return newStmt
 }

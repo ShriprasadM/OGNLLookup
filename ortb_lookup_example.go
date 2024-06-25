@@ -1,14 +1,15 @@
 package main
 
 import (
-	mognl "OGNLLookup/ognl/bidresponse"
+	// mognl "OGNLLookup/ognl/bidresponse"
+	mognl "OGNLLookup/ognl1"
 	"fmt"
 
 	"github.com/prebid/openrtb"
 )
 
 func generateBidResponseOGNLMap() {
-	// initF(openrtb.BidResponse{}, "bidResponse", "./bid_response_ognl.go")
+	initF(openrtb.BidResponse{}, "bidResponse", "./ognl1/bid_response_ognl.go")
 
 }
 
@@ -20,9 +21,18 @@ var bidResponse = openrtb.BidResponse{
 	},
 }
 
+func test() {
+	bid, err := mognl.LookUpBidResponse("bidresponse.seatbid.bid", openrtb.BidResponse{}, mognl.IndexInfo{}, openrtb.Bid{})
+	if err == nil {
+		fmt.Println(bid)
+	} else {
+		fmt.Println(err)
+	}
+}
+
 func admLookup() {
 	bid, err := mognl.LookUpBidResponse("bidresponse.seatbid.bid.adm", bidResponse, mognl.IndexInfo{
-		SeatBidIndex: 1,
+		SeatbidIndex: 1,
 		BidIndex:     44,
 	}, "")
 
