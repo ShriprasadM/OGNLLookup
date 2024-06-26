@@ -3,7 +3,7 @@ package bidresponse
 import (
 	"fmt"
 
-	"github.com/prebid/openrtb"
+	openrtb "github.com/prebid/openrtb/v20/openrtb2"
 )
 
 type IndexInfo struct {

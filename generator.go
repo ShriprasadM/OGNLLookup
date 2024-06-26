@@ -20,6 +20,7 @@ func initF(obj any, variableName, outputFileName string) string {
 	fields := reflect.TypeOf(obj)
 	variableDataType := fmt.Sprintf("%T", obj)
 	setKeyMeta(obj, variableName)
+	INDEX_INFO_STRUCT_NAME = getIndexInfoStructName(variableName, INDEX_INFO_STRUCT_NAME)
 	// values := reflect.ValueOf(obj)
 	num := fields.NumField()
 	mapString := fmt.Sprintf("var %sLookup = map[string]%s{\n", variableName, RETURN_VAL_TYPE_MACRO)
@@ -33,7 +34,7 @@ func initF(obj any, variableName, outputFileName string) string {
 	mapString = strings.ReplaceAll(mapString, RETURN_VAL_TYPE_MACRO, returnValueType)
 
 	// fmt.Println(mapString)
-	indexInfoStruct := indexInfoStruct(indexInfoFieldsWithDataTypes...)
+	indexInfoStruct := indexInfoStruct(INDEX_INFO_STRUCT_NAME, indexInfoFieldsWithDataTypes...)
 	output := indexInfoStruct + "\n" + mapString
 	path := filepath.Dir(outputFileName)
 	err := os.MkdirAll(path, os.ModePerm)
@@ -46,7 +47,7 @@ func initF(obj any, variableName, outputFileName string) string {
 	packageName := paths[len(paths)-1]
 	output = fmt.Sprintf("package %s\n%s", packageName, output)
 	// add lookup function
-	output += generateLookupFunc(variableName, variableDataType)
+	output += generateLookupFunc(variableName, variableDataType, INDEX_INFO_STRUCT_NAME)
 	err = os.WriteFile(outputFileName, []byte(output), os.ModePerm)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -60,9 +61,10 @@ func itr(field reflect.StructField, prefix string, mapString string, variableNam
 	// rt := reflect.ValueOf(field)
 
 	// Check if the type is an array
+	// fmt.Println(field.Type.Kind())
 	switch field.Type.Kind() {
 	case reflect.Slice:
-		// mapString += mapKV(ognl(strings.ToLower(prefix), strings.ToLower(field.Name)), ognl(prefix, field.Name))
+		mapString += mapKV(ognl(strings.ToLower(prefix), strings.ToLower(field.Name)), ognl(prefix, field.Name), variableNameDataType)
 		fields := reflect.SliceOf(field.Type.Elem())
 		setKeyMeta(field, field.Name)
 		structFields := fields.Elem()
@@ -74,10 +76,42 @@ func itr(field reflect.StructField, prefix string, mapString string, variableNam
 				mapString = itr(sfield, prefix, mapString, variableNameDataType)
 			}
 		}
+
 		// fmt.Println(field, "is a slice with element type", field.Type.Elem())
 	// case reflect.Array:
 	// mapString += mapKV(strings.ToLower(field.Name), ognl(prefix, field.Name))
 	// fmt.Println(field, "is an array with element type", field.Type.Elem())
+	case reflect.Pointer:
+		mapString += mapKV(ognl(strings.ToLower(prefix), strings.ToLower(field.Name)), ognl(prefix, field.Name), variableNameDataType)
+		setKeyMeta(field, field.Name)
+		fields := reflect.PointerTo(field.Type.Elem())
+		t := fields.Elem()
+		// t := reflect.TypeOf(field)
+		if t.Kind() == reflect.Struct {
+			prefix = ognl(prefix, field.Name)
+			for i := 0; i < t.NumField(); i++ {
+				sfield := t.Field(i)
+				mapString = itr(sfield, prefix, mapString, variableNameDataType)
+			}
+		}
+		// field := t.Field(i)
+		// // fmt.Println(field.Name)
+		// ft := field.Type
+		// if ft.Kind() == reflect.Ptr {
+		// 	ft = ft.Elem()
+		// }
+		// fmt.Println(ft.Name())
+		// pointerType := reflect.PointerTo(field.Type)
+		// pointerTypeElements := pointerType.Elem()
+		// fmt.Println(pointerTypeElements.)
+		// if pointerTypeElements.Kind() == reflect.Struct {
+		// 	num := pointerTypeElements.NumField()
+		// 	prefix = ognl(prefix, field.Name)
+		// 	for i := 0; i < num; i++ {
+		// 		sfield := pointerTypeElements.Field(i)
+		// 		mapString = itr(sfield, prefix, mapString, variableNameDataType)
+		// 	}
+		// }
 	default:
 		// m[strings.ToLower(field.Name)] = ognl(prefix, field.Name)
 		setKeyMeta(field, field.Name)
@@ -122,10 +156,17 @@ func mapKV(key, val string, variableNameDataType string) string {
 			prevStmt = ognl(prevStmt, obj)
 		}
 
-		if !keyNillableMap[objs[index]].isNilable {
-			continue
+		// if !keyNillableMap[objs[index]].isNilable {
+		// 	continue
+		// }
+		keyInfoMap := keyNillableMap[objs[index]]
+		if keyInfoMap.isNilable && !keyInfoMap.isCollection {
+			conditionStmt = orCondition(conditionStmt, fmt.Sprintf(" %s == nil", prevStmt))
 		}
 
+		if conditionStmt == "" {
+			continue
+		}
 		if ifCondition == "" {
 			ifCondition = "if "
 		} else {
@@ -133,6 +174,7 @@ func mapKV(key, val string, variableNameDataType string) string {
 		}
 		// ifCondition += fmt.Sprintf("%s == nil ", conditionStmt)
 		ifCondition += conditionStmt
+		conditionStmt = ""
 	}
 	if ifCondition == "" {
 		ifCondition = "\n return " + prevStmt + ", nil"
@@ -222,8 +264,8 @@ func isCollection(obj any) bool {
 	return false
 }
 
-func indexInfoStruct(indices ...string) string {
-	indexInfo := `type ` + INDEX_INFO_STRUCT_NAME + ` struct {
+func indexInfoStruct(structName string, indices ...string) string {
+	indexInfo := `type ` + structName + ` struct {
 		%s
 	}
 	`
@@ -232,6 +274,10 @@ func indexInfoStruct(indices ...string) string {
 		fields += fmt.Sprintf("	%s int\n", field)
 	}
 	return fmt.Sprintf(indexInfo, fields)
+}
+
+func getIndexInfoStructName(variableName, suffix string) string {
+	return strings.Title(variableName) + suffix
 }
 
 /*
@@ -249,15 +295,16 @@ Example
 		return returnType, fmt.Errorf("data type mismatch.Expected [%T] but found [%T]", returnType, result)
 	}
 */
-func generateLookupFunc(variableName, variableDataType string) string {
-	tmpl := `// LookUpBidResponse obtains value of type R using key from %s. It uses indexIndo if required
+func generateLookupFunc(variableName, variableDataType, indexInfoStructName string) string {
+	fnName := "LookUp" + strings.Title(variableName)
+	tmpl := `// ` + fnName + ` obtains value of type R using key from %s. It uses indexIndo if required
 	// In case of failure returns error
-	func LookUpBidResponse[R any](key string, %s %s, indexInfo IndexInfo, returnType R) (R, error) {
-	fn := bidResponseLookup[key]
+	func ` + fnName + `[R any](key string, %s %s, indexInfo ` + indexInfoStructName + `, returnType R) (R, error) {
+	fn := ` + variableName + `Lookup[key]
 	if fn == nil {
 		return returnType, fmt.Errorf("invalid OGNL key [%s]", key)
 	}
-	result, err := fn(bidResponse, indexInfo)
+	result, err := fn(%s, indexInfo)
 	if err != nil {
 		// Note: returntype here is not actual value
 		return returnType, err
@@ -267,7 +314,7 @@ func generateLookupFunc(variableName, variableDataType string) string {
 	}
 	return returnType, fmt.Errorf("data type mismatch.Expected [%s] but found [%s]", returnType, result)
 }`
-	return fmt.Sprintf("\n"+tmpl, variableName, variableName, variableDataType, "%s", "%T", "%T")
+	return fmt.Sprintf("\n"+tmpl, variableName, variableName, variableDataType, "%s", variableName, "%T", "%T")
 }
 
 func orCondition(prevStmt, newStmt string) string {
