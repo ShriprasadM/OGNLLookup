@@ -1,4 +1,4 @@
-package main
+package ognl
 
 import (
 	"fmt"
@@ -16,9 +16,17 @@ var (
 	indexInfoFieldsWithDataTypes                    = make([]string, 0)
 )
 
-func initF(obj any, variableName, outputFileName string) string {
+// GenerateSource generates the source code for the given object and writes it to the specified output file.
+// It takes the object, variableName, and outputFileName as input parameters.
+// Writes the generated source code to the outputFileName.
+func GenerateSource(obj any, variableName, outputFileName, packageName string) string {
+	return initF(obj, variableName, outputFileName, packageName)
+}
+
+func initF(obj any, variableName, outputFileName, packageName string) string {
 	fields := reflect.TypeOf(obj)
 	variableDataType := fmt.Sprintf("%T", obj)
+	fmt.Printf("%v", obj)
 	setKeyMeta(obj, variableName)
 	INDEX_INFO_STRUCT_NAME = getIndexInfoStructName(variableName, INDEX_INFO_STRUCT_NAME)
 	// values := reflect.ValueOf(obj)
@@ -37,14 +45,21 @@ func initF(obj any, variableName, outputFileName string) string {
 	indexInfoStruct := indexInfoStruct(INDEX_INFO_STRUCT_NAME, indexInfoFieldsWithDataTypes...)
 	output := indexInfoStruct + "\n" + mapString
 	path := filepath.Dir(outputFileName)
+	// wd, err1 := os.Getwd()
+	// if err1 != nil {
+	// 	fmt.Println(err1.Error())
+	// 	return ""
+	// }
+	// abs, _ := filepath.Abs(path)
+	// fmt.Println(wd == abs)
 	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		fmt.Println(err.Error())
 		return ""
 	}
 	// use rightmost path as package name
-	paths := strings.Split(path, "/")
-	packageName := paths[len(paths)-1]
+	// paths := strings.Split(path, "/")
+	// packageName := paths[len(paths)-1]
 	output = fmt.Sprintf("package %s\n%s", packageName, output)
 	// add lookup function
 	output += generateLookupFunc(variableName, variableDataType, INDEX_INFO_STRUCT_NAME)
