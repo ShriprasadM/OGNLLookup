@@ -1,10 +1,9 @@
 # OGNLLookup
 
 # _Retrieve value from you Go Objects without JSON parser_
-> [!TIP]
-> __Influenced from [OGNL](https://commons.apache.org/dormant/commons-ognl/index.html)__
+**__Influenced from [OGNL](https://commons.apache.org/dormant/commons-ognl/index.html)__**
 
-
+# Example
 1. ``` git clone --single-branch --branch examples_readme git@github.com:ShriprasadM/OGNLLookup.git ```
 2. ``` cd OGNLLookup ```
 > [!NOTE]
