@@ -1,6 +1,6 @@
 # OGNLLookup
 
-# _Retrieve value from you Go Objects without JSON parser_
+# _Retrieve value from your Go Objects based on OGNL expression_
 **__Influenced from [OGNL](https://commons.apache.org/dormant/commons-ognl/index.html)__**
 
 # Example
